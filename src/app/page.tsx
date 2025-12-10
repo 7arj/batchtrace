@@ -1,65 +1,110 @@
-import Image from "next/image";
+import { PrismaClient } from '@prisma/client'
+import Link from 'next/link'
 
-export default function Home() {
+// Initialize the database client
+const prisma = new PrismaClient()
+
+// This is a Server Component (fetches data directly on the server)
+export default async function Dashboard() {
+  // 1. Fetch the 5 most recent batches
+  const recentBatches = await prisma.batch.findMany({
+    take: 5,
+    orderBy: { producedAt: 'desc' },
+    include: { product: true } // Join with the Product table to get the name
+  })
+
+  // 2. Calculate some quick stats
+  const pendingCount = recentBatches.filter(b => b.status === 'QC_PENDING').length
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-5xl mx-auto">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+  <h1 className="text-3xl font-bold text-gray-900">BatchTrace Dashboard</h1>
+  <div className="flex gap-3">
+    <Link href="/recall">
+      <button className="bg-white border border-red-200 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 transition">
+        🚨 Recall Search
+      </button>
+    </Link>
+    
+    <Link href="/new-batch">
+      <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+        + New Batch
+      </button>
+    </Link>
+  </div>
+</div>
+
+        {/* KPI Cards (Key Performance Indicators) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-gray-500 text-sm font-medium uppercase">Active Batches</h3>
+            <p className="text-3xl font-bold text-gray-900 mt-2">{recentBatches.length}</p>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-gray-500 text-sm font-medium uppercase">Pending QC</h3>
+            <p className="text-3xl font-bold text-orange-600 mt-2">{pendingCount}</p>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-gray-500 text-sm font-medium uppercase">Compliance</h3>
+            <p className="text-3xl font-bold text-green-600 mt-2">100%</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* The Data Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 className="font-semibold text-gray-700">Recent Production Runs</h2>
+          </div>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-100 text-sm text-gray-500">
+                <th className="p-4 font-medium">Batch Code</th>
+                <th className="p-4 font-medium">Product Name</th>
+                <th className="p-4 font-medium">Production Date</th>
+                <th className="p-4 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentBatches.map((batch) => (
+                <tr key={batch.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                  <td className="p-4 font-mono text-blue-600 font-medium">
+  <Link href={`/batch/${batch.id}`} className="hover:underline">
+    {batch.batchCode}
+  </Link>
+</td>
+                  <td className="p-4 text-gray-800">
+                    {batch.product.name}
+                  </td>
+                  <td className="p-4 text-gray-600">
+                    {batch.producedAt.toLocaleDateString()}
+                  </td>
+                  <td className="p-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      batch.status === 'RELEASED' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {batch.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {recentBatches.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                    No batches found. Create your first one!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
-    </div>
-  );
+
+      </div>
+    </main>
+  )
 }
