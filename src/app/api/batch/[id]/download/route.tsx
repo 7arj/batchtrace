@@ -29,9 +29,9 @@ export async function GET(
   
   // 3. Convert stream to a buffer for the response
   // (Standard Node.js stream handling)
-  const chunks: Uint8Array[] = []
+const chunks: Uint8Array[] = []
   for await (const chunk of stream) {
-    chunks.push(chunk)
+    chunks.push(chunk as Uint8Array) // <--- Add this cast
   }
   const pdfBuffer = Buffer.concat(chunks)
 
