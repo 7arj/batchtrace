@@ -1,0 +1,68 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"  // <--- This was the issue (it was "postgresql")
+  url      = env("DATABASE_URL")
+}
+
+// 1. RAW MATERIALS (e.g., Lavender Oil)
+model Ingredient {
+  id        String   @id @default(uuid())
+  name      String
+  supplier  String
+  lotNumber String   
+  quantity  Float    
+  unit      String   
+  receivedAt DateTime @default(now())
+  
+  batchIngredients BatchIngredient[]
+}
+
+// 2. RECIPES (e.g., "Calm Face Cream v1")
+model Recipe {
+  id          String @id @default(uuid())
+  name        String
+  description String?
+  products    Product[]
+}
+
+// 3. PRODUCTION BATCHES (The "compliance" core)
+model Batch {
+  id          String   @id @default(uuid())
+  batchCode   String   @unique 
+  producedAt  DateTime @default(now())
+  status      String   @default("QC_PENDING") 
+  
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   String
+  
+  ingredients BatchIngredient[]
+}
+
+// 4. JOIN TABLE (Links Ingredients to Batches)
+model BatchIngredient {
+  id           String     @id @default(uuid())
+  amountUsed   Float
+  
+  batch        Batch      @relation(fields: [batchId], references: [id])
+  batchId      String
+  
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId String
+}
+
+// 5. FINISHED PRODUCTS
+model Product {
+  id        String  @id @default(uuid())
+  name      String  
+  sku       String
+  
+  recipe    Recipe? @relation(fields: [recipeId], references: [id])
+  recipeId  String?
+  
+  batches   Batch[]
+}
